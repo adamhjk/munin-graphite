@@ -25,6 +25,12 @@
 
 require 'socket'
 
+STDOUT.sync = true # ensures no buffering when logging
+
+def log(msg)
+  puts "[#{Time.new.to_s}] #{msg}"
+end
+
 class Munin
   def initialize(host='localhost', port=4949)
     @munin = TCPSocket.new(host, port)
@@ -74,9 +80,9 @@ while true
   munin = Munin.new(ARGV[0])
   munin.get_response("nodes").each do |node|
     metric_base << node.split(".").reverse.join(".")
-    puts "Doing #{metric_base}"
+    log "Doing #{metric_base}"
     munin.get_response("list")[0].split(" ").each do |metric|
-      puts "Grabbing #{metric}"
+      log "Grabbing #{metric}"
       mname = "#{metric_base}"
       has_category = false
       base = false
@@ -101,9 +107,10 @@ while true
 
   carbon = Carbon.new(ARGV[1])
   all_metrics.each do |m|
-    puts "Sending #{m}"
+    log "Sending #{m}"
     carbon.send(m)
   end
+  log "Sleeping for 60 s"
   sleep 60
 end
 
