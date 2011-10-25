@@ -110,7 +110,7 @@ while true
     log "Sending #{m}"
     carbon.send(m)
   end
-  log "Sleeping for 60 s"
-  sleep 60
+  log "Sleeping for 30 s"
+  sleep 30
 end
 
