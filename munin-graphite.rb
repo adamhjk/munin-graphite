@@ -67,9 +67,27 @@ class Carbon
   end
 end
 
+class Amqp
+  require 'bunny'
+  def initialize(host='localhost')
+    @b = Bunny.new(:host=>host)
+    @b.start
+    @q = @b.queue('graphite')
+  end
+
+  def send_message(message)
+    @q.publish(message)
+  end
+
+  def stop
+    @b.stop
+  end
+end
+
 while true
   metric_base = "servers."
   all_metrics = Array.new
+  use_amqp = false
 
   munin = Munin.new(ARGV[0])
   munin.get_response("nodes").each do |node|
@@ -99,11 +117,21 @@ while true
     end
   end
 
-  carbon = Carbon.new(ARGV[1])
-  all_metrics.each do |m|
-    puts "Sending #{m}"
-    carbon.send(m)
+  if use_amqp
+    amqp = Amqp.new(ARGV[1])
+    all_metrics.each do |m|
+      puts "Sending #{m}"
+      amqp.send_message(m)
+    end
+    amqp.stop
+  else
+    carbon = Carbon.new(ARGV[1])
+    all_metrics.each do |m|
+      puts "Sending #{m}"
+      carbon.send(m)
+    end
   end
+
   sleep 60
 end
 
