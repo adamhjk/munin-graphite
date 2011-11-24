@@ -25,6 +25,9 @@
 
 require 'socket'
 
+use_amqp = false
+require 'bunny' if use_amqp
+
 STDOUT.sync = true # ensures no buffering when logging
 
 def log(msg)
@@ -74,7 +77,6 @@ class Carbon
 end
 
 class Amqp
-  require 'bunny'
   def initialize(host='localhost')
     @b = Bunny.new(:host=>host)
     @b.start
@@ -93,7 +95,6 @@ end
 while true
   metric_base = "servers."
   all_metrics = Array.new
-  use_amqp = false
 
   munin = Munin.new(ARGV[0])
   munin.get_response("nodes").each do |node|
