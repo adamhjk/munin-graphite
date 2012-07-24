@@ -25,6 +25,15 @@
 
 require 'socket'
 
+use_amqp = false
+require 'bunny' if use_amqp
+
+STDOUT.sync = true # ensures no buffering when logging
+
+def log(msg)
+  puts "[#{Time.new.to_s}] #{msg}"
+end
+
 class Munin
   def initialize(host='localhost', port=4949)
     @munin = TCPSocket.new(host, port)
@@ -67,6 +76,22 @@ class Carbon
   end
 end
 
+class Amqp
+  def initialize(host='localhost')
+    @b = Bunny.new(:host=>host)
+    @b.start
+    @q = @b.queue('graphite')
+  end
+
+  def send_message(message)
+    @q.publish(message)
+  end
+
+  def stop
+    @b.stop
+  end
+end
+
 while true
   metric_base = "servers."
   all_metrics = Array.new
@@ -74,9 +99,9 @@ while true
   munin = Munin.new(ARGV[0])
   munin.get_response("nodes").each do |node|
     metric_base << node.split(".").reverse.join(".")
-    puts "Doing #{metric_base}"
+    log "Doing #{metric_base}"
     munin.get_response("list")[0].split(" ").each do |metric|
-      puts "Grabbing #{metric}"
+      log "Grabbing #{metric}"
       mname = "#{metric_base}"
       has_category = false
       base = false
@@ -94,16 +119,27 @@ while true
         line =~ /^(.+)\.value\s+(.+)$/
         field = $1
         value = $2
-        all_metrics << "#{mname}.#{metric}.#{field} #{value} #{Time.now.to_i}"
+        all_metrics << "#{mname}.#{metric}.#{field} #{value} #{Time.now.to_i}" if (value != nil and value.length > 0 and field != nil and field.length > 0)
       end
     end
   end
 
-  carbon = Carbon.new(ARGV[1])
-  all_metrics.each do |m|
-    puts "Sending #{m}"
-    carbon.send(m)
+  if use_amqp
+    amqp = Amqp.new(ARGV[1])
+    all_metrics.each do |m|
+      log "Sending #{m}"
+      amqp.send_message(m)
+    end
+    amqp.stop
+  else
+    carbon = Carbon.new(ARGV[1])
+    all_metrics.each do |m|
+      log "Sending #{m}"
+      carbon.send(m)
+    end
   end
-  sleep 60
+
+  log "Sleeping for 30 s"
+  sleep 30
 end
 
