@@ -72,6 +72,7 @@ while true
   all_metrics = Array.new
 
   munin = Munin.new(ARGV[0])
+  carbon = Carbon.new(ARGV[1])
   munin.get_response("nodes").each do |node|
     metric_base << node.split(".").reverse.join(".")
     puts "Doing #{metric_base}"
@@ -99,7 +100,6 @@ while true
     end
   end
 
-  carbon = Carbon.new(ARGV[1])
   all_metrics.each do |m|
     puts "Sending #{m}"
     carbon.send(m)
