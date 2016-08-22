@@ -94,7 +94,7 @@ while true
         line =~ /^(.+)\.value\s+(.+)$/
         field = $1
         value = $2
-        all_metrics << "#{mname}.#{metric}.#{field} #{value} #{Time.now.to_i}"
+        all_metrics << "#{mname}.#{metric}.#{field} #{value} #{Time.now.to_i}" if (value != nil and value.length > 0 and field != nil and field.length > 0)
       end
     end
   end
